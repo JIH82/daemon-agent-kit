@@ -1,0 +1,4 @@
+2025-07-08 13:00:10,926 [INFO] System agent instruction parser started.
+2025-07-08 13:04:20,911 [INFO] System agent instruction parser started.
+2025-07-08 13:04:20,911 [INFO] Moved instruction 'install_htop' to agents/.
+2025-07-08 13:04:20,911 [INFO] Touched trigger file: agents/run_install_htop.flag
