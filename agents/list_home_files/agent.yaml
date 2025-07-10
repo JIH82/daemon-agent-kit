@@ -1,0 +1,3 @@
+name: list_home_files
+description: Lists files in the user's home directory and saves to output/list_home_files.txt
+dependencies: []

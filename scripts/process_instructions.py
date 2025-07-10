@@ -1,51 +1,54 @@
-#!/usr/bin/env python3
 import os
-import shutil
-import logging
 import time
-import yaml
+import logging
+import subprocess
+import json
 
 INSTRUCTIONS_DIR = "instructions"
 AGENTS_DIR = "agents"
 LOG_FILE = "logs/system_agent.log"
+META_AGENT = "meta_decider"
+OUTPUT_FILE = "output/meta_response.txt"
 
-logging.basicConfig(
-    filename=LOG_FILE,
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s"
-)
+logging.basicConfig(filename=LOG_FILE, level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-def is_valid_instruction(path):
-    return os.path.isfile(os.path.join(path, "run.sh")) and os.path.isfile(os.path.join(path, "agent.yaml"))
+def load_agent_names():
+    return [name for name in os.listdir(AGENTS_DIR) if os.path.isdir(os.path.join(AGENTS_DIR, name))]
 
-def process_instruction_folder(name, full_path):
-    agent_path = os.path.join(AGENTS_DIR, name)
+def process_instruction(file_path):
+    filename = os.path.basename(file_path)
+    agent_name = filename
+    agent_path = os.path.join(AGENTS_DIR, agent_name, "run.sh")
+
     if os.path.exists(agent_path):
-        logging.warning(f"Agent '{name}' already exists. Skipping.")
-        return
+        logging.info(f"🟢 Found matching agent: {agent_name}, executing...")
+        subprocess.run(["bash", agent_path], check=False)
+    else:
+        logging.info(f"🟡 No direct agent found for '{filename}'. Passing to meta_decider.")
+        meta_path = os.path.join(AGENTS_DIR, META_AGENT, "run.sh")
+        subprocess.run(["bash", meta_path, file_path], check=False)
 
-    if not is_valid_instruction(full_path):
-        logging.warning(f"Incomplete instruction: {name}. Skipping.")
-        return
-
-    # Move to agents/
-    shutil.move(full_path, agent_path)
-    logging.info(f"Moved instruction '{name}' to agents/.")
-
-    # Touch flag file
-    flag_file = os.path.join(AGENTS_DIR, f"run_{name}.flag")
-    with open(flag_file, 'w') as f:
-        f.write('')
-    logging.info(f"Touched trigger file: {flag_file}")
-
-def main():
+def watch_instructions():
     logging.info("System agent instruction parser started.")
+    seen_files = set()
+
     while True:
-        for item in os.listdir(INSTRUCTIONS_DIR):
-            full_path = os.path.join(INSTRUCTIONS_DIR, item)
-            if os.path.isdir(full_path):
-                process_instruction_folder(item, full_path)
-        time.sleep(5)
+        try:
+            files = set(os.listdir(INSTRUCTIONS_DIR))
+            new_files = files - seen_files
+
+            for f in new_files:
+                file_path = os.path.join(INSTRUCTIONS_DIR, f)
+                if os.path.isfile(file_path):
+                    logging.info(f"📥 New instruction: {f}")
+                    process_instruction(file_path)
+                    seen_files.add(f)
+
+            time.sleep(2)
+        except Exception as e:
+            logging.error(f"Error in instruction watcher: {e}")
+            time.sleep(5)
 
 if __name__ == "__main__":
-    main()
+    watch_instructions()
+

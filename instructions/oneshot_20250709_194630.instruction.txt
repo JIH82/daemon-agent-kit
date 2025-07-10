@@ -1,0 +1,1 @@
+Write a bash script that pings 1.1.1.1 once and prints the result
